@@ -4,8 +4,12 @@ REPO=${REPO:-./repo}
 sync_flags=""
 
 repo_sync() {
+	DEPTH_OPTION=""
+	if [ $SHALLOW_CLONE == true ]; then
+	  DEPTH_OPTION="--depth=1"
+	fi
 	rm -rf .repo/manifest* &&
-	$REPO init -u $GITREPO -b $BRANCH -m $1.xml $REPO_INIT_FLAGS &&
+	$REPO init -u $GITREPO -b $BRANCH -m $1.xml $REPO_INIT_FLAGS $DEPTH_OPTION &&
 	$REPO sync $sync_flags $REPO_SYNC_FLAGS
 	ret=$?
 	if [ "$GITREPO" = "$GIT_TEMP_REPO" ]; then
@@ -32,6 +36,7 @@ esac
 
 GITREPO=${GITREPO:-"git://github.com/mozilla-b2g/b2g-manifest"}
 BRANCH=${BRANCH:-master}
+SHALLOW_CLONE=false
 
 while [ $# -ge 1 ]; do
 	case $1 in
@@ -46,6 +51,10 @@ while [ $# -ge 1 ]; do
 	--help|-h)
 		# The main case statement will give a usage message.
 		break
+		;;
+	--shallow)
+		SHALLOW_CLONE=true
+		shift
 		;;
 	-*)
 		echo "$0: unrecognized option $1" >&2
@@ -187,8 +196,9 @@ case "$1" in
 	;;
 
 *)
-	echo "Usage: $0 [-cdflnq] (device name)"
+	echo "Usage: $0 [-cdflnq][--shallow] (device name)"
 	echo "Flags are passed through to |./repo sync|."
+	echo "If |--shallow| option set would clone with |repo init --depth=1|."
 	echo
 	echo Valid devices to configure are:
 	echo - galaxy-s2
