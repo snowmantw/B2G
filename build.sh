@@ -7,6 +7,7 @@
 # If the hashes differ, we use a per-device script to redo
 # the firmware extraction
 function configure_device() {
+    local build_flag=$1
     hash_file="$OUT/firmware.hash"
 
     # Make sure that our assumption that device codenames are unique
@@ -15,23 +16,13 @@ function configure_device() {
         echo $DEVICE is ambiguous \"$(ls -d device/*/$DEVICE 2> /dev/null)\"
         return 1
     fi
-
-    # Select which blob setup script to use, if any.  We currently
-    # assume that $DEVICE maps to the filesystem location, which is true
-    # for the devices we support now (oct 2012) that do not require blobs.
-    # The emulator uses a $DEVICE of 'emulator' but its device/ directory
-    # uses the 'goldfish' name.
-    if [ -f device/*/$DEVICE/download-blobs.sh ] ; then
-        important_files="device/*/$DEVICE/download-blobs.sh"
-        script="cd device/*/$DEVICE && ./download-blobs.sh"
-    elif [ -f device/*/$DEVICE/extract-files.sh ] ; then
-        important_files="device/*/$DEVICE/extract-files.sh"
-        script="cd device/*/$DEVICE && ./extract-files.sh"
-    else
-        important_files=
-        script=
+    # To make sure the blobs is ready for use. Would extract files from the
+    # device when it's needed.
+    # If there is build flag, like the current only one we care ("gecko"),
+    # ignore it.
+    if [ -z "$build_flag" ]; then
+      setup_blobs
     fi
-
     # If we have files that are important to look at, we need
     # to check if they've changed
     if [ -n "$important_files" ] ; then
@@ -52,12 +43,30 @@ function configure_device() {
     return $?
 }
 
+# Select which blob setup script to use, if any.  We currently
+# assume that $DEVICE maps to the filesystem location, which is true
+# for the devices we support now (oct 2012) that do not require blobs.
+# The emulator uses a $DEVICE of 'emulator' but its device/ directory
+# uses the 'goldfish' name.
+function setup_blobs() {
+  if [ -f device/*/$DEVICE/download-blobs.sh ] ; then
+      important_files="device/*/$DEVICE/download-blobs.sh"
+      script="cd device/*/$DEVICE && ./download-blobs.sh"
+  elif [ -f device/*/$DEVICE/extract-files.sh ] ; then
+      important_files="device/*/$DEVICE/extract-files.sh"
+      script="cd device/*/$DEVICE && ./extract-files.sh"
+  else
+      important_files=
+      script=
+  fi
+}
+
 unset CDPATH
 . setup.sh &&
 if [ -f patches/patch.sh ] ; then
     . patches/patch.sh
 fi &&
-configure_device &&
+configure_device $1 &&
 time nice -n19 make $MAKE_FLAGS $@
 
 ret=$?
