@@ -4,8 +4,12 @@ REPO=${REPO:-./repo}
 sync_flags=""
 
 repo_sync() {
+	DEPTH_OPTION="--depth=1"
+	if [ $REPO_INIT_FULLCLONE == true ]; then
+	 DEPTH_OPTION=""
+	fi
 	rm -rf .repo/manifest* &&
-	$REPO init -u $GITREPO -b $BRANCH -m $1.xml $REPO_INIT_FLAGS &&
+	$REPO init -u $GITREPO -b $BRANCH -m $1.xml $REPO_INIT_FLAGS $DEPTH_OPTION &&
 	$REPO sync $sync_flags $REPO_SYNC_FLAGS
 	ret=$?
 	if [ "$GITREPO" = "$GIT_TEMP_REPO" ]; then
@@ -32,6 +36,7 @@ esac
 
 GITREPO=${GITREPO:-"git://github.com/mozilla-b2g/b2g-manifest"}
 BRANCH=${BRANCH:-master}
+REPO_INIT_FULLCLONE=false
 
 while [ $# -ge 1 ]; do
 	case $1 in
@@ -41,6 +46,12 @@ while [ $# -ge 1 ]; do
 			shift
 			sync_flags+=" $1"
 		fi
+		shift
+		;;
+	--full)
+		# need to perform a full |repo sync|.
+		# the default version would perform a shallow cloning.
+		REPO_INIT_FULLCLONE=true
 		shift
 		;;
 	--help|-h)
@@ -187,8 +198,9 @@ case "$1" in
 	;;
 
 *)
-	echo "Usage: $0 [-cdflnq] (device name)"
+	echo "Usage: $0 [-cdflnq][--full] (device name)"
 	echo "Flags are passed through to |./repo sync|."
+	echo "Set --full option to perform a full cloning."
 	echo
 	echo Valid devices to configure are:
 	echo - galaxy-s2
